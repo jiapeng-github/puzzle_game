@@ -20,41 +20,53 @@ class FlyingChessScreen extends StatefulWidget {
 class _FlyingChessScreenState extends State<FlyingChessScreen>
     with TickerProviderStateMixin {
   static const int planesPerPlayer = 4;
-  static const int trackSize = 52; // 减少跑道格子数量，放大格子
-  static const int homeStart = 52;
-  static const int goalPos = 58;
+  static const int trackSize = 48; // 48格跑道，每边12格
+  static const int homeStart = 48;
+  static const int goalPos = 54;
   static const double sidePanelMaxWidth = 420;
 
-  // 每边跑道格子数（不含转角）
+  // 每边跑道格子数（含转角）
   static const int cellsPerSide = 12;
 
-  // 跑道布局（从右下角开始顺时针）：
-  // 底边：0~12（从右向左），左边：13~25（从下向上）
-  // 顶边：26~38（从左向右），右边：39~51（从上向下）
+  // 跑道布局（从右下角开始顺时针，每边12格，转角只属于一边）：
+  // 底边：0~11（从右向左，11是左下角转角）
+  // 左边：12~23（从下向上，23是左上角转角，起点在转角旁边）
+  // 顶边：24~35（从左向右，35是右上角转角，起点在转角旁边）
+  // 右边：36~47（从上向下，47是右下角转角，起点在转角旁边）
   //
   // 停机坪位置：红队(0)左上角，黄队(1)右上角，蓝队(2)左下角，绿队(3)右下角
   //
   // 出发点：每个玩家从对应颜色跑道的入口格子起飞，沿外圈顺时针飞行
-  // 红队(粉色跑道入口) -> 格子32（顶边中间）
-  // 黄队(黄色跑道入口) -> 格子45（右边中间）
-  // 蓝队(蓝色跑道入口) -> 格子19（左边中间）
-  // 绿队(绿色跑道入口) -> 格子6（底边中间）
+  // 红队(粉色跑道入口) -> 格子29（顶边中间偏左）
+  // 黄队(黄色跑道入口) -> 格子41（右边中间偏上）
+  // 蓝队(蓝色跑道入口) -> 格子17（左边中间偏下）
+  // 绿队(绿色跑道入口) -> 格子5（底边中间偏右）
   // 绕一圈回到自己起点时自动进入终点航线
-  static const List<int> startPositions = [32, 45, 19, 6];
+  static const List<int> startPositions = [29, 41, 17, 5];
 
   // 终点航线入口：绕一圈后进入终点航线
-  // 红队：从顶边中间进入 (格子32附近)
-  // 黄队：从右边中间进入 (格子45附近)
-  // 蓝队：从左边中间进入 (格子19附近)
-  // 绿队：从底边中间进入 (格子6附近)
-  static const List<int> homeEntries = [32, 45, 19, 6];
+  // 红队：从顶边中间进入 (格子29附近)
+  // 黄队：从右边中间进入 (格子41附近)
+  // 蓝队：从左边中间进入 (格子17附近)
+  // 绿队：从底边中间进入 (格子5附近)
+  static const List<int> homeEntries = [29, 41, 17, 5];
 
-  static const Set<int> safeCells = {32, 45, 19, 6};
-  static const Set<int> boostCells = {3, 9, 16, 22, 29, 35, 42, 48};
-  static const Set<int> shieldCells = {5, 11, 18, 24, 31, 37, 44, 50};
-  static const Map<int, int> portalCells = {7: 20, 20: 33, 33: 46, 46: 7};
-  static const Set<int> meteorCells = {2, 14, 27, 41};
-  static const Set<int> repairCells = {4, 17, 30, 43};
+  static const Set<int> safeCells = {29, 41, 17, 5};
+  // 加速带：每边第3格和第9格（索引从0开始）
+  // 底边：2, 8 | 左边：14, 20 | 顶边：26, 32 | 右边：38, 44
+  static const Set<int> boostCells = {2, 8, 14, 20, 26, 32, 38, 44};
+  // 护盾格：每边第5格和第11格
+  // 底边：4, 10 | 左边：16, 22 | 顶边：28, 34 | 右边：40, 46
+  static const Set<int> shieldCells = {4, 10, 16, 22, 28, 34, 40, 46};
+  // 传送门：每边第7格形成循环
+  // 底边6 -> 左边18 -> 顶边30 -> 右边42 -> 底边6
+  static const Map<int, int> portalCells = {6: 18, 18: 30, 30: 42, 42: 6};
+  // 陨石格：每边第2格
+  // 底边：1 | 左边：13 | 顶边：25 | 右边：37
+  static const Set<int> meteorCells = {1, 13, 25, 37};
+  // 维修站：每边第4格
+  // 底边：3 | 左边：15 | 顶边：27 | 右边：39
+  static const Set<int> repairCells = {3, 15, 27, 39};
 
   static const List<Color> playerColors = [
     Color(0xFFE84B44),
@@ -77,7 +89,7 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
   ];
 
   final List<Player?> _slotPlayers = [null, null, null, null];
-  final List<bool> _slotIsAI = [false, true, true, true];
+  final List<bool> _slotIsAI = [true, true, true, true]; // 初始全部AI，initState中设置第一个为当前玩家
 
   late List<List<int>> _positions;
   late List<List<bool>> _hasShield;
@@ -106,6 +118,16 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
   @override
   void initState() {
     super.initState();
+    // 默认第一个槽位为当前玩家（非AI）
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<GameProvider>();
+      if (provider.currentPlayer != null) {
+        setState(() {
+          _slotPlayers[0] = provider.currentPlayer;
+          _slotIsAI[0] = false;
+        });
+      }
+    });
     _diceAnim = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 650),
@@ -128,11 +150,17 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
     super.dispose();
   }
 
+  /// 检查是否至少有一个人类玩家
+  bool get _hasHumanPlayer => _slotIsAI.any((isAI) => !isAI);
+
   void _initGame() {
-    // 确保槽位0有玩家
-    final provider = context.read<GameProvider>();
-    if (_slotPlayers[0] == null && provider.currentPlayer != null) {
-      _slotPlayers[0] = provider.currentPlayer;
+    // 确保至少有一个人类玩家
+    if (!_hasHumanPlayer) {
+      final provider = context.read<GameProvider>();
+      if (provider.currentPlayer != null) {
+        _slotPlayers[0] = provider.currentPlayer;
+        _slotIsAI[0] = false;
+      }
     }
     _positions = List.generate(4, (_) => List.filled(planesPerPlayer, -1));
     _hasShield = List.generate(4, (_) => List.filled(planesPerPlayer, false));
@@ -1187,6 +1215,17 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
   }
 
   void _showSlotDialog(int slotIndex, List<Player> allPlayers) {
+    // 计算当前非AI玩家数量（不含当前槽位）
+    final otherHumanCount = _slotIsAI
+        .asMap()
+        .entries
+        .where((e) => e.key != slotIndex && !e.value)
+        .length;
+    // 当前槽位是否为非AI玩家
+    final isCurrentHuman = !_slotIsAI[slotIndex];
+    // 是否允许选择AI（如果当前是人类玩家且是唯一人类，则不允许切换为AI）
+    final canSelectAI = !isCurrentHuman || otherHumanCount > 0;
+
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1199,6 +1238,7 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 ListTile(
+                  enabled: canSelectAI,
                   leading: CircleAvatar(
                     backgroundColor: playerColors[slotIndex].withValues(
                       alpha: 0.16,
@@ -1212,20 +1252,24 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
                     ),
                   ),
                   title: const Text('自动驾驶'),
-                  subtitle: Text(baseNames[slotIndex]),
+                  subtitle: Text(canSelectAI
+                      ? baseNames[slotIndex]
+                      : '至少需要一个人类玩家'),
                   trailing: _slotIsAI[slotIndex]
                       ? const Icon(
                           Icons.check_circle_rounded,
                           color: Colors.green,
                         )
                       : null,
-                  onTap: () {
-                    setState(() {
-                      _slotIsAI[slotIndex] = true;
-                      _slotPlayers[slotIndex] = null;
-                    });
-                    Navigator.of(ctx).pop();
-                  },
+                  onTap: canSelectAI
+                      ? () {
+                          setState(() {
+                            _slotIsAI[slotIndex] = true;
+                            _slotPlayers[slotIndex] = null;
+                          });
+                          Navigator.of(ctx).pop();
+                        }
+                      : null,
                 ),
                 const Divider(height: 24),
                 if (allPlayers.isEmpty)
@@ -1342,13 +1386,16 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
     );
   }
 
+  // 转角格子索引（每边的终点位置）
+  static const Set<int> _cornerCells = {11, 23, 35, 47};
+
   List<Widget> _buildPlaneWidgets(_BoardGeometry geometry) {
     final entries = <_PlaneEntry>[];
     final groups = <String, List<_PlaneEntry>>{};
     for (var player = 0; player < 4; player++) {
       for (var plane = 0; plane < planesPerPlayer; plane++) {
         final pos = _positions[player][plane];
-        late final Offset center;
+        Offset center;
         late final String key;
         if (pos == -1) {
           center = geometry.hangarCenter(player, plane);
@@ -1361,6 +1408,26 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
           key = 'home-$player-$pos';
         } else {
           center = geometry.trackCenter(pos);
+          // 为转角格子添加微小偏移，避免与下一段起点重叠
+          if (_cornerCells.contains(pos)) {
+            final cellSize = geometry.cellSize;
+            // 根据转角位置决定偏移方向
+            Offset cornerOffset;
+            if (pos == 11) {
+              // 左下角：往左下偏移
+              cornerOffset = Offset(-cellSize * 0.12, cellSize * 0.12);
+            } else if (pos == 23) {
+              // 左上角：往左上偏移
+              cornerOffset = Offset(-cellSize * 0.12, -cellSize * 0.12);
+            } else if (pos == 35) {
+              // 右上角：往右上偏移
+              cornerOffset = Offset(cellSize * 0.12, -cellSize * 0.12);
+            } else {
+              // 右下角（47）：往右下偏移
+              cornerOffset = Offset(cellSize * 0.12, cellSize * 0.12);
+            }
+            center = center + cornerOffset;
+          }
           key = 'track-$pos';
         }
         final entry = _PlaneEntry(
@@ -2006,10 +2073,10 @@ class _BoardGeometry {
     // 终点航线入口位置：动态取对应外圈格子的实际坐标，确保与跑道无缝衔接
     final entries = _FlyingChessScreenState.homeEntries;
     _homeStarts = [
-      _trackPositions[entries[0]].center, // 红队：32号格（顶边）
-      _trackPositions[entries[1]].center, // 黄队：45号格（右边）
-      _trackPositions[entries[2]].center, // 蓝队：19号格（左边）
-      _trackPositions[entries[3]].center, // 绿队：6号格（底边）
+      _trackPositions[entries[0]].center, // 红队
+      _trackPositions[entries[1]].center, // 黄队
+      _trackPositions[entries[2]].center, // 蓝队
+      _trackPositions[entries[3]].center, // 绿队
     ];
   }
 
@@ -2036,51 +2103,62 @@ class _BoardGeometry {
 
   /// 计算跑道格子位置
   /// 跑道沿外圈排列，从右下角开始顺时针
-  /// 每边12格 + 4个转角格 = 52格
+  /// 每边11格 + 4个独立转角 = 48格，无重叠
+  /// 底边：0-10（11格，从右下角旁边向左到左下角旁边）
+  /// 左下角转角：11
+  /// 左边：12-22（11格，从左下角旁边向上到左上角旁边）
+  /// 左上角转角：23
+  /// 顶边：24-34（11格，从左上角旁边向右到右上角旁边）
+  /// 右上角转角：35
+  /// 右边：36-46（11格，从右上角旁边向下到右下角旁边）
+  /// 右下角转角：47
   List<_TrackCell> _computeTrackPositions() {
-    const cellsPerSide = _FlyingChessScreenState.cellsPerSide;
-
     final cells = <_TrackCell>[];
-    // 使用更小的边距确保格子不会溢出
     final trackMargin = size * 0.04;
     final trackLength = size - trackMargin * 2;
-    final step = trackLength / cellsPerSide;
+    // 每边11格，间距为 trackLength / 12（因为包含转角位置）
+    final step = trackLength / 12;
 
-    // 底边（从右下角向左）：0 ~ 11（12格），飞机向左
-    for (var i = 0; i < cellsPerSide; i++) {
-      final x = size - trackMargin - (i * step);
+    // 底边（从右下角旁边向左）：0 ~ 10（11格），飞机向左
+    // 格子0在右下角旁边，格子10在左下角旁边
+    for (var i = 0; i < 11; i++) {
+      final x = size - trackMargin - step - (i * step);
       final y = size - trackMargin;
       cells.add(_TrackCell(Offset(x, y), pi)); // 向左
     }
-    // 转角格12：左下角，飞机开始向上
-    cells.add(_TrackCell(Offset(trackMargin, size - trackMargin), -pi / 2));
 
-    // 左边（从左下角向上）：13 ~ 24（12格），飞机向上
-    for (var i = 0; i < cellsPerSide; i++) {
+    // 左下角转角：11
+    cells.add(_TrackCell(Offset(trackMargin, size - trackMargin), -pi * 0.75));
+
+    // 左边（从左下角旁边向上）：12 ~ 22（11格），飞机向上
+    for (var i = 0; i < 11; i++) {
       final x = trackMargin;
-      final y = size - trackMargin - (i * step);
+      final y = size - trackMargin - step - (i * step);
       cells.add(_TrackCell(Offset(x, y), -pi / 2)); // 向上
     }
-    // 转角格25：左上角，飞机开始向右
-    cells.add(_TrackCell(Offset(trackMargin, trackMargin), 0));
 
-    // 顶边（从左上角向右）：26 ~ 37（12格），飞机向右
-    for (var i = 0; i < cellsPerSide; i++) {
-      final x = trackMargin + (i * step);
+    // 左上角转角：23
+    cells.add(_TrackCell(Offset(trackMargin, trackMargin), -pi * 0.25));
+
+    // 顶边（从左上角旁边向右）：24 ~ 34（11格），飞机向右
+    for (var i = 0; i < 11; i++) {
+      final x = trackMargin + step + (i * step);
       final y = trackMargin;
       cells.add(_TrackCell(Offset(x, y), 0)); // 向右
     }
-    // 转角格38：右上角，飞机开始向下
-    cells.add(_TrackCell(Offset(size - trackMargin, trackMargin), pi / 2));
 
-    // 右边（从右上角向下）：39 ~ 50（12格），飞机向下
-    for (var i = 0; i < cellsPerSide; i++) {
+    // 右上角转角：35
+    cells.add(_TrackCell(Offset(size - trackMargin, trackMargin), pi * 0.25));
+
+    // 右边（从右上角旁边向下）：36 ~ 46（11格），飞机向下
+    for (var i = 0; i < 11; i++) {
       final x = size - trackMargin;
-      final y = trackMargin + (i * step);
+      final y = trackMargin + step + (i * step);
       cells.add(_TrackCell(Offset(x, y), pi / 2)); // 向下
     }
-    // 转角格51：右下角，飞机开始向左（回到起点）
-    cells.add(_TrackCell(Offset(size - trackMargin, size - trackMargin), pi));
+
+    // 右下角转角：47
+    cells.add(_TrackCell(Offset(size - trackMargin, size - trackMargin), pi * 0.75));
 
     return cells;
   }

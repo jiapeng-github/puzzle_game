@@ -74,7 +74,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
   }
 }
 
-/// 本周排行榜
+/// 本周排行榜 - 按积分排序
 class _WeeklyLeaderboardTab extends StatelessWidget {
   final GameProvider provider;
   const _WeeklyLeaderboardTab({required this.provider});
@@ -124,11 +124,11 @@ class _WeeklyLeaderboardTab extends StatelessWidget {
               rank: rank,
               name: player.name,
               avatar: _avatarEmoji(player.avatar),
-              primaryValue: player.wins,
-              primaryLabel: '胜场',
-              secondaryValue: player.weeklyScore,
-              secondaryLabel: '积分',
-              subtitle: '本周积分 ${player.weeklyScore}',
+              primaryValue: player.weeklyScore,
+              primaryLabel: '积分',
+              secondaryValue: player.wins,
+              secondaryLabel: '胜场',
+              subtitle: '本周 ${player.gamesPlayed} 场',
             );
           },
         );
@@ -137,7 +137,7 @@ class _WeeklyLeaderboardTab extends StatelessWidget {
   }
 }
 
-/// 总排行榜
+/// 总排行榜 - 按积分排序
 class _GlobalLeaderboardTab extends StatelessWidget {
   final GameProvider provider;
   const _GlobalLeaderboardTab({required this.provider});
@@ -184,10 +184,10 @@ class _GlobalLeaderboardTab extends StatelessWidget {
               rank: rank,
               name: player.name,
               avatar: _avatarEmoji(player.avatar),
-              primaryValue: player.wins,
-              primaryLabel: '胜场',
-              secondaryValue: player.totalScore,
-              secondaryLabel: '积分',
+              primaryValue: player.totalScore,
+              primaryLabel: '积分',
+              secondaryValue: player.wins,
+              secondaryLabel: '胜场',
               subtitle: '共 ${player.gamesPlayed} 场',
             );
           },
@@ -197,7 +197,7 @@ class _GlobalLeaderboardTab extends StatelessWidget {
   }
 }
 
-/// 单个游戏排行榜
+/// 单个游戏排行榜 - 显示积分和游戏最佳记录
 class _GameLeaderboardTab extends StatelessWidget {
   final String gameType;
   final GameProvider provider;
@@ -221,7 +221,14 @@ class _GameLeaderboardTab extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
         final data = snap.data ?? [];
-        if (data.isEmpty) {
+        // 过滤掉没有游戏记录的玩家
+        final activeData = data.where((item) {
+          final score = item['score'] as int? ?? 0;
+          final totalScore = item['totalScore'] as int? ?? 0;
+          return score > 0 || totalScore > 0;
+        }).toList();
+
+        if (activeData.isEmpty) {
           return const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -236,36 +243,43 @@ class _GameLeaderboardTab extends StatelessWidget {
         }
         return ListView.builder(
           padding: const EdgeInsets.all(16),
-          itemCount: data.length,
+          itemCount: activeData.length,
           itemBuilder: (context, index) {
-            final item = data[index];
+            final item = activeData[index];
             final rank = index + 1;
             final name = item['name'] as String;
             final avatar = item['avatar'] as String;
             final score = item['score'] as int? ?? 0;
+            final totalScore = item['totalScore'] as int? ?? 0;
             final isTime = item['isTime'] == true;
 
-            // 格式化时间显示
-            String displayLabel;
-            String displayValue;
+            // 格式化最佳记录显示
+            String bestLabel;
+            String bestValue;
             if (isTime && score > 0) {
               final m = score ~/ 60;
               final s = score % 60;
-              displayLabel = '最快用时';
-              displayValue = '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+              bestLabel = '最佳';
+              bestValue = '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+            } else if (score > 0) {
+              bestLabel = '最佳';
+              bestValue = '$score';
             } else {
-              displayLabel = '最高分';
-              displayValue = '$score';
+              bestLabel = '';
+              bestValue = '-';
             }
 
             return _LeaderboardCard(
               rank: rank,
               name: name,
               avatar: _avatarEmoji(avatar),
-              primaryValue: score,
-              primaryLabel: displayLabel,
-              displayValue: displayValue,
-              showSecondary: false,
+              primaryValue: totalScore,
+              primaryLabel: '积分',
+              displayValue: totalScore > 0 ? '$totalScore' : '-',
+              secondaryValue: score,
+              secondaryLabel: bestLabel,
+              secondaryDisplayValue: bestValue,
+              subtitle: score > 0 ? '$bestLabel: $bestValue' : '暂无记录',
             );
           },
         );
@@ -284,8 +298,8 @@ class _LeaderboardCard extends StatelessWidget {
   final String? displayValue; // 自定义显示值（如时间格式）
   final int? secondaryValue;
   final String? secondaryLabel;
+  final String? secondaryDisplayValue; // 次数值自定义显示
   final String? subtitle;
-  final bool showSecondary;
 
   const _LeaderboardCard({
     required this.rank,
@@ -296,8 +310,8 @@ class _LeaderboardCard extends StatelessWidget {
     this.displayValue,
     this.secondaryValue,
     this.secondaryLabel,
+    this.secondaryDisplayValue,
     this.subtitle,
-    this.showSecondary = true,
   });
 
   @override
@@ -356,10 +370,10 @@ class _LeaderboardCard extends StatelessWidget {
                 ],
               ),
             ),
-            // 胜场/积分
+            // 积分/最佳记录
             Row(
               children: [
-                // 主数值（胜场）
+                // 主数值（积分）
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -378,21 +392,21 @@ class _LeaderboardCard extends StatelessWidget {
                             const TextStyle(fontSize: 12, color: Colors.grey)),
                   ],
                 ),
-                // 次数值（积分）
-                if (showSecondary && secondaryValue != null) ...[
+                // 次数值（最佳记录）
+                if (secondaryLabel != null && secondaryLabel!.isNotEmpty) ...[
                   const SizedBox(width: 16),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        '$secondaryValue',
+                        secondaryDisplayValue ?? '$secondaryValue',
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF81C784),
                         ),
                       ),
-                      Text(secondaryLabel ?? '积分',
+                      Text(secondaryLabel!,
                           style: const TextStyle(
                               fontSize: 12, color: Colors.grey)),
                     ],

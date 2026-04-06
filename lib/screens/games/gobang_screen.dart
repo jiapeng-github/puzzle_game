@@ -1236,52 +1236,36 @@ class _GobangScreenState extends State<GobangScreen>
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
-              // 音效开关（占位）
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.3)),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.volume_up, color: Color(0xFF8B6914)),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        '游戏音效',
-                        style: TextStyle(fontSize: 16, color: Color(0xFF3D2914)),
-                      ),
-                    ),
-                    Text('开发中...', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                  ],
-                ),
-              ),
               const SizedBox(height: 16),
-              // 游戏说明
+              // 游戏规则（放大显示）
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: const Color(0xFFD4AF37).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.3)),
                 ),
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '游戏规则：',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF8B6914),
-                      ),
+                    Row(
+                      children: [
+                        Icon(Icons.rule, color: Color(0xFF8B6914), size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          '游戏规则',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF8B6914),
+                          ),
+                        ),
+                      ],
                     ),
-                    SizedBox(height: 4),
+                    SizedBox(height: 12),
                     Text(
                       '• 黑方先行，轮流落子\n• 五子连珠即为胜利\n• 每局限悔棋1次\n• 单人模式可使用3次提示',
-                      style: TextStyle(fontSize: 12, color: Color(0xFF5D4037)),
+                      style: TextStyle(fontSize: 15, color: Color(0xFF5D4037), height: 1.6),
                     ),
                   ],
                 ),

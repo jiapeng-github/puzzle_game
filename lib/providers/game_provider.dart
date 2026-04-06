@@ -229,62 +229,65 @@ class GameProvider extends ChangeNotifier {
     return _playerDao.getMemoryLeaderboard();
   }
 
-  /// 获取某游戏的排行榜数据
+  /// 获取某游戏的排行榜数据（包含总积分和游戏最佳记录）
   Future<List<Map<String, dynamic>>> getGameLeaderboard(String gameType) async {
+    // 先获取按积分排序的所有玩家
+    final allPlayers = await _playerDao.getTotalLeaderboard();
+
     switch (gameType) {
       case GameType.gobang:
-        final players = await _playerDao.getGobangLeaderboard();
-        return players
+        return allPlayers
             .map((p) => {
               'avatar': p.avatar,
               'name': p.name,
               'score': p.gobangWins,
+              'totalScore': p.totalScore,
             })
             .toList();
       case GameType.game2048:
-        final players = await _playerDao.get2048Leaderboard();
-        return players
+        return allPlayers
             .map((p) => {
               'avatar': p.avatar,
               'name': p.name,
               'score': p.best2048,
+              'totalScore': p.totalScore,
             })
             .toList();
       case GameType.match3:
-        final players = await _playerDao.getMatch3Leaderboard();
-        return players
+        return allPlayers
             .map((p) => {
               'avatar': p.avatar,
               'name': p.name,
               'score': p.bestMatch3,
+              'totalScore': p.totalScore,
             })
             .toList();
       case GameType.flyingChess:
-        final players = await _playerDao.getFlyingChessLeaderboard();
-        return players
+        return allPlayers
             .map((p) => {
               'avatar': p.avatar,
               'name': p.name,
               'score': p.bestFlying,
+              'totalScore': p.totalScore,
             })
             .toList();
       case GameType.sudoku:
-        final players = await _playerDao.getSudokuLeaderboard();
-        return players
+        return allPlayers
             .map((p) => {
               'avatar': p.avatar,
               'name': p.name,
               'score': p.bestSudoku,
+              'totalScore': p.totalScore,
               'isTime': true, // 标记为时间类型
             })
             .toList();
       case GameType.memory:
-        final players = await _playerDao.getMemoryLeaderboard();
-        return players
+        return allPlayers
             .map((p) => {
               'avatar': p.avatar,
               'name': p.name,
               'score': p.bestMemory,
+              'totalScore': p.totalScore,
               'isTime': true, // 标记为时间类型
             })
             .toList();

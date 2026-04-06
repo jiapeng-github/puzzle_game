@@ -181,49 +181,59 @@ class _FullLeaderboardScreenState extends State<FullLeaderboardScreen>
         return _buildLeaderboardList(
           future: context.read<GameProvider>().getTotalLeaderboard(),
           getScore: (p) => p.totalScore,
+          subtitleBuilder: (p) => '共 ${p.gamesPlayed} 场',
         );
       case 'weekly':
         return _buildLeaderboardList(
           future: context.read<GameProvider>().getWeeklyLeaderboard(),
           getScore: (p) => p.weeklyScore,
+          subtitleBuilder: (p) => '本周 ${p.gamesPlayed} 场',
         );
       case GameType.gobang:
         return _buildLeaderboardList(
-          future: context.read<GameProvider>().getGobangLeaderboard(),
-          getScore: (p) => p.gobangWins,
-          suffix: '胜',
+          future: context.read<GameProvider>().getTotalLeaderboard(),
+          getScore: (p) => p.totalScore,
+          subtitleBuilder: (p) => p.gobangWins > 0 ? '五子棋 ${p.gobangWins} 胜' : null,
         );
       case GameType.game2048:
         return _buildLeaderboardList(
-          future: context.read<GameProvider>().get2048Leaderboard(),
-          getScore: (p) => p.best2048,
-          suffix: '分',
+          future: context.read<GameProvider>().getTotalLeaderboard(),
+          getScore: (p) => p.totalScore,
+          subtitleBuilder: (p) => p.best2048 > 0 ? '最高 ${p.best2048} 分' : null,
         );
       case GameType.match3:
         return _buildLeaderboardList(
-          future: context.read<GameProvider>().getMatch3Leaderboard(),
-          getScore: (p) => p.bestMatch3,
-          suffix: '分',
+          future: context.read<GameProvider>().getTotalLeaderboard(),
+          getScore: (p) => p.totalScore,
+          subtitleBuilder: (p) => p.bestMatch3 > 0 ? '最高 ${p.bestMatch3} 分' : null,
         );
       case GameType.flyingChess:
         return _buildLeaderboardList(
-          future: context.read<GameProvider>().getFlyingChessLeaderboard(),
-          getScore: (p) => p.bestFlying,
-          suffix: '分',
+          future: context.read<GameProvider>().getTotalLeaderboard(),
+          getScore: (p) => p.totalScore,
+          subtitleBuilder: (p) => p.bestFlying > 0 ? '最高 ${p.bestFlying} 分' : null,
         );
       case GameType.sudoku:
         return _buildLeaderboardList(
-          future: context.read<GameProvider>().getSudokuLeaderboard(),
-          getScore: (p) => p.bestSudoku,
-          suffix: '秒',
-          isTime: true,
+          future: context.read<GameProvider>().getTotalLeaderboard(),
+          getScore: (p) => p.totalScore,
+          subtitleBuilder: (p) {
+            if (p.bestSudoku <= 0) return null;
+            final m = p.bestSudoku ~/ 60;
+            final s = p.bestSudoku % 60;
+            return '最快 ${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+          },
         );
       case GameType.memory:
         return _buildLeaderboardList(
-          future: context.read<GameProvider>().getMemoryLeaderboard(),
-          getScore: (p) => p.bestMemory,
-          suffix: '秒',
-          isTime: true,
+          future: context.read<GameProvider>().getTotalLeaderboard(),
+          getScore: (p) => p.totalScore,
+          subtitleBuilder: (p) {
+            if (p.bestMemory <= 0) return null;
+            final m = p.bestMemory ~/ 60;
+            final s = p.bestMemory % 60;
+            return '最快 ${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+          },
         );
       default:
         return _buildLeaderboardList(
@@ -236,8 +246,7 @@ class _FullLeaderboardScreenState extends State<FullLeaderboardScreen>
   Widget _buildLeaderboardList({
     required Future<List<Player>> future,
     required int Function(Player) getScore,
-    String suffix = '',
-    bool isTime = false,
+    String? Function(Player)? subtitleBuilder,
   }) {
     return FutureBuilder<List<Player>>(
       future: future,
@@ -268,8 +277,7 @@ class _FullLeaderboardScreenState extends State<FullLeaderboardScreen>
               player: player,
               score: score,
               isCurrent: isCurrent,
-              suffix: suffix,
-              isTime: isTime,
+              subtitle: subtitleBuilder?.call(player),
             );
           },
         );
@@ -299,8 +307,7 @@ class _FullLeaderboardScreenState extends State<FullLeaderboardScreen>
     required Player player,
     required int score,
     required bool isCurrent,
-    String suffix = '',
-    bool isTime = false,
+    String? subtitle,
   }) {
     final isTop3 = rank < 3;
     final medalEmojis = ['🥇', '🥈', '🥉'];
@@ -309,18 +316,6 @@ class _FullLeaderboardScreenState extends State<FullLeaderboardScreen>
       const Color(0xFF9CA3AF),
       const Color(0xFFCD7F32),
     ];
-
-    // 格式化分数显示
-    String displayScore;
-    if (isTime && score > 0) {
-      final m = score ~/ 60;
-      final s = score % 60;
-      displayScore = '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
-    } else if (isTime && score == 0) {
-      displayScore = '--:--';
-    } else {
-      displayScore = '$score';
-    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -375,31 +370,46 @@ class _FullLeaderboardScreenState extends State<FullLeaderboardScreen>
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  player.name,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF2D3436),
-                  ),
-                ),
-                if (isCurrent) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF4A90D9),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text(
-                      '当前',
-                      style: TextStyle(
-                        fontSize: 10,
+                Row(
+                  children: [
+                    Text(
+                      player.name,
+                      style: const TextStyle(
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        color: Color(0xFF2D3436),
                       ),
+                    ),
+                    if (isCurrent) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4A90D9),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          '当前',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF9CA3AF),
                     ),
                   ),
                 ],
@@ -413,7 +423,7 @@ class _FullLeaderboardScreenState extends State<FullLeaderboardScreen>
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              isTime && score > 0 ? displayScore : '$displayScore$suffix',
+              '$score',
               style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
