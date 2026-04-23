@@ -119,26 +119,36 @@ class GameProvider extends ChangeNotifier {
     // 更新2048最高分
     if (gameType == GameType.game2048 && score > 0) {
       await _playerDao.updateBest2048(_currentAvatar, score);
+      await _playerDao.update2048Score(_currentAvatar, score);
     }
 
     // 更新消消乐最高分
     if (gameType == GameType.match3 && score > 0) {
       await _playerDao.updateBestMatch3(_currentAvatar, score);
+      await _playerDao.updateMatch3Score(_currentAvatar, score);
     }
 
     // 更新飞行棋最高积分
     if (gameType == GameType.flyingChess && score > 0) {
       await _playerDao.updateBestFlying(_currentAvatar, score);
+      await _playerDao.updateFlyingChessScore(_currentAvatar, score);
     }
 
     // 更新数独最快时间（胜利时）
     if (gameType == GameType.sudoku && isWin && duration > 0) {
       await _playerDao.updateBestSudoku(_currentAvatar, duration);
+      await _playerDao.updateSudokuScore(_currentAvatar, duration);
     }
 
     // 更新翻牌最快时间（胜利时）
     if (gameType == GameType.memory && isWin && duration > 0) {
       await _playerDao.updateBestMemory(_currentAvatar, duration);
+      await _playerDao.updateMemoryScore(_currentAvatar, duration);
+    }
+
+    // 更新五子棋累计积分
+    if (gameType == GameType.gobang && score > 0) {
+      await _playerDao.updateGobangScore(_currentAvatar, score);
     }
 
     // 刷新数据
@@ -183,6 +193,7 @@ class GameProvider extends ChangeNotifier {
     // 更新飞行棋最高积分
     if (gameType == GameType.flyingChess && score > 0) {
       await _playerDao.updateBestFlying(playerAvatar, score);
+      await _playerDao.updateFlyingChessScore(playerAvatar, score);
     }
 
     // 刷新数据

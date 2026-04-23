@@ -25,9 +25,6 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
   static const int goalPos = 54;
   static const double sidePanelMaxWidth = 420;
 
-  // 每边跑道格子数（含转角）
-  static const int cellsPerSide = 12;
-
   // 跑道布局（从右下角开始顺时针，每边12格，转角只属于一边）：
   // 底边：0~11（从右向左，11是左下角转角）
   // 左边：12~23（从下向上，23是左上角转角，起点在转角旁边）
@@ -95,6 +92,8 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
   late List<List<bool>> _hasShield;
   late List<List<bool>> _hasBoost;
   late List<List<bool>> _isRepairing;
+  // 每架飞机从起飞后累计走的步数，用于判断是否已绕一圈
+  late List<List<int>> _stepsFromStart;
 
   bool _gameStarted = false;
   bool _gameOver = false;
@@ -114,6 +113,46 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
   late final AnimationController _diceAnim;
   late final AnimationController _pulseAnim;
   late final AnimationController _glowAnim;
+  late final AnimationController _teleportAnim;
+  late final AnimationController _returnAnim;
+
+  // 特效状态
+  int? _teleportEffectFromPos;
+  int? _teleportEffectToPos;
+  int? _returnEffectPos; // track position where return happened
+  int? _returnEffectPlayer;
+
+  /// 触发传送特效
+  void _playTeleportEffect(int fromPos, int toPos) {
+    setState(() {
+      _teleportEffectFromPos = fromPos;
+      _teleportEffectToPos = toPos;
+    });
+    _teleportAnim.forward(from: 0).then((_) {
+      if (mounted) {
+        setState(() {
+          _teleportEffectFromPos = null;
+          _teleportEffectToPos = null;
+        });
+      }
+    });
+  }
+
+  /// 触发返航特效
+  void _playReturnEffect(int player, int pos) {
+    setState(() {
+      _returnEffectPos = pos;
+      _returnEffectPlayer = player;
+    });
+    _returnAnim.forward(from: 0).then((_) {
+      if (mounted) {
+        setState(() {
+          _returnEffectPos = null;
+          _returnEffectPlayer = null;
+        });
+      }
+    });
+  }
 
   @override
   void initState() {
@@ -140,6 +179,14 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1600),
     )..repeat(reverse: true);
+    _teleportAnim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _returnAnim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
   }
 
   @override
@@ -147,6 +194,8 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
     _diceAnim.dispose();
     _pulseAnim.dispose();
     _glowAnim.dispose();
+    _teleportAnim.dispose();
+    _returnAnim.dispose();
     super.dispose();
   }
 
@@ -166,6 +215,7 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
     _hasShield = List.generate(4, (_) => List.filled(planesPerPlayer, false));
     _hasBoost = List.generate(4, (_) => List.filled(planesPerPlayer, false));
     _isRepairing = List.generate(4, (_) => List.filled(planesPerPlayer, false));
+    _stepsFromStart = List.generate(4, (_) => List.filled(planesPerPlayer, 0));
     // 重置保底计数
     for (var i = 0; i < 4; i++) {
       _pityCount[i] = 0;
@@ -182,6 +232,10 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
       _movablePlanes = <int>[];
       _startTime = DateTime.now();
       _message = '${_playerName(0)} 先手，点击骰子开始。';
+      _teleportEffectFromPos = null;
+      _teleportEffectToPos = null;
+      _returnEffectPos = null;
+      _returnEffectPlayer = null;
     });
     if (_slotIsAI[0]) _scheduleAI();
     AudioService().playBgm(BgmType.flyingChess);
@@ -251,7 +305,7 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
     final player = _currentPlayer;
     // 检查是否需要保底：无飞机在跑道且保底计数达到5次
     final noPlanesOnTrack = _routeCount(player) == 0;
-    if (noPlanesOnTrack && _pityCount[player] >= 5) {
+    if (noPlanesOnTrack && _pityCount[player] >= 3) {
       // 触发保底，重置计数
       _pityCount[player] = 0;
       return 6;
@@ -335,6 +389,7 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
         if (dice == 6) movable.add(i);
       } else if (_calculateNewPos(
             player,
+            i,
             pos,
             _effectiveSteps(player, i, dice),
           ) !=
@@ -373,7 +428,7 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
     if (_hasBoost[player][plane]) {
       score += 12;
     }
-    final newPos = _calculateNewPos(player, oldPos, steps);
+    final newPos = _calculateNewPos(player, plane, oldPos, steps);
     if (newPos == -2) return -999;
     score += steps * 2;
     if (newPos == goalPos) return score + 260;
@@ -429,6 +484,7 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
       _hasShield[player][plane] = false;
       _hasBoost[player][plane] = false;
       _isRepairing[player][plane] = false;
+      _stepsFromStart[player][plane] = 0;
       message =
           '${_playerName(player)} 的 ${_planeLabel(plane)} 从 ${baseNames[player]} 起飞。';
     } else {
@@ -438,7 +494,7 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
         _hasBoost[player][plane] = false;
       }
       _isRepairing[player][plane] = false;
-      final newPos = _calculateNewPos(player, oldPos, moveSteps);
+      final newPos = _calculateNewPos(player, plane, oldPos, moveSteps);
       if (newPos == -2) {
         setState(() {
           _diceValue = 0;
@@ -449,6 +505,7 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
         return;
       }
       _positions[player][plane] = newPos;
+      _stepsFromStart[player][plane] += moveSteps;
       if (newPos == goalPos) {
         message = '${_playerName(player)} 的 ${_planeLabel(plane)} 成功抵达终点。';
       } else if (newPos >= homeStart) {
@@ -483,26 +540,28 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
     _scheduleSwitch();
   }
 
-  int _calculateNewPos(int player, int oldPos, int steps) {
+  int _calculateNewPos(int player, int plane, int oldPos, int steps) {
     if (oldPos >= homeStart) {
       final target = oldPos + steps;
       return target <= goalPos ? target : -2;
     }
-    final entry = homeEntries[player];
-    // 当位于入口格（刚从该格出发）时，必须绕满整圈才能再次进入终点航线
-    final distance = (oldPos == entry)
-        ? trackSize
-        : (oldPos < entry)
-            ? entry - oldPos
-            : (trackSize - oldPos) + entry;
-    if (steps > distance) {
-      final target = homeStart + steps - distance - 1;
-      return target <= goalPos ? target : -2;
+    // 只有已绕一圈（累计步数 >= trackSize）的飞机才能进入终点航道
+    if (_stepsFromStart[player][plane] >= trackSize) {
+      final entry = homeEntries[player];
+      final distance = (oldPos == entry)
+          ? 0
+          : (oldPos < entry)
+              ? entry - oldPos
+              : (trackSize - oldPos) + entry;
+      if (steps > distance) {
+        final target = homeStart + steps - distance - 1;
+        return target <= goalPos ? target : -2;
+      }
     }
     return (oldPos + steps) % trackSize;
   }
 
-  String _resolveLanding(int player, int plane, int pos) {
+  String _resolveLanding(int player, int plane, int pos, {bool fromTeleport = false}) {
     final notes = <String>['落在 $pos 号航点'];
     if (boostCells.contains(pos)) {
       _hasBoost[player][plane] = true;
@@ -510,20 +569,28 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
     } else if (shieldCells.contains(pos)) {
       _hasShield[player][plane] = true;
       notes.add('获得护盾，可抵挡一次撞击');
-    } else if (portalCells.containsKey(pos)) {
+    } else if (portalCells.containsKey(pos) && !fromTeleport) {
       final target = portalCells[pos]!;
+      // 触发传送特效
+      _playTeleportEffect(pos, target);
       _positions[player][plane] = target;
+      // 传送相当于额外前进的步数
+      _stepsFromStart[player][plane] += (target - pos + trackSize) % trackSize;
       notes
         ..clear()
         ..add('进入跃迁门，瞬移到 $target 号航点');
+      // 传送后不再触发传送门，只检查碰撞
       final hit = _resolveCollision(player, target);
       if (hit.isNotEmpty) notes.add(hit);
       return notes.join('，');
     } else if (meteorCells.contains(pos)) {
+      // 触发返航特效
+      _playReturnEffect(player, pos);
       _positions[player][plane] = -1;
       _hasShield[player][plane] = false;
       _hasBoost[player][plane] = false;
       _isRepairing[player][plane] = false;
+      _stepsFromStart[player][plane] = 0;
       return '遭遇陨石风暴，被迫返航到机库。';
     } else if (repairCells.contains(pos)) {
       _isRepairing[player][plane] = true;
@@ -558,10 +625,13 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
           _hasShield[p][i] = false;
           notes.add('${_playerName(p)} 的护盾被击碎');
         } else {
+          // 触发返航特效
+          _playReturnEffect(p, pos);
           _positions[p][i] = -1;
           _hasShield[p][i] = false;
           _hasBoost[p][i] = false;
           _isRepairing[p][i] = false;
+          _stepsFromStart[p][i] = 0;
           notes.add('击落了 ${_playerName(p)} 的 ${_planeLabel(i)}');
         }
       }
@@ -1396,6 +1466,7 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
       for (var plane = 0; plane < planesPerPlayer; plane++) {
         final pos = _positions[player][plane];
         Offset center;
+        double angle = 0;
         late final String key;
         if (pos == -1) {
           center = geometry.hangarCenter(player, plane);
@@ -1405,25 +1476,30 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
           key = 'goal';
         } else if (pos >= homeStart) {
           center = geometry.homeCenter(player, pos - homeStart);
+          // 终点航线方向
+          final homeVectors = [
+            Offset(0, geometry.size * 0.068),
+            Offset(-geometry.size * 0.068, 0),
+            Offset(geometry.size * 0.068, 0),
+            Offset(0, -geometry.size * 0.068),
+          ];
+          final v = homeVectors[player];
+          angle = atan2(v.dy, v.dx);
           key = 'home-$player-$pos';
         } else {
           center = geometry.trackCenter(pos);
+          angle = geometry.trackAngle(pos);
           // 为转角格子添加微小偏移，避免与下一段起点重叠
           if (_cornerCells.contains(pos)) {
             final cellSize = geometry.cellSize;
-            // 根据转角位置决定偏移方向
             Offset cornerOffset;
             if (pos == 11) {
-              // 左下角：往左下偏移
               cornerOffset = Offset(-cellSize * 0.12, cellSize * 0.12);
             } else if (pos == 23) {
-              // 左上角：往左上偏移
               cornerOffset = Offset(-cellSize * 0.12, -cellSize * 0.12);
             } else if (pos == 35) {
-              // 右上角：往右上偏移
               cornerOffset = Offset(cellSize * 0.12, -cellSize * 0.12);
             } else {
-              // 右下角（47）：往右下偏移
               cornerOffset = Offset(cellSize * 0.12, cellSize * 0.12);
             }
             center = center + cornerOffset;
@@ -1435,13 +1511,16 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
           plane: plane,
           center: center,
           key: key,
+          angle: angle,
         );
         entries.add(entry);
         groups.putIfAbsent(key, () => <_PlaneEntry>[]).add(entry);
       }
     }
 
-    return entries.map((entry) {
+    final widgets = <Widget>[];
+
+    for (final entry in entries) {
       final group = groups[entry.key]!;
       final index = group.indexOf(entry);
       final offset = _stackOffset(
@@ -1457,86 +1536,113 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
           entry.player == _currentPlayer && _selectedPlane == entry.plane;
       final size = geometry.tokenSize;
       final hitSize = size * 1.18;
-      return Positioned(
-        left: entry.center.dx + offset.dx - hitSize / 2,
-        top: entry.center.dy + offset.dy - hitSize / 2,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => _selectPlane(entry.plane),
-          child: AnimatedBuilder(
-            animation: _pulseAnim,
-            builder: (context, child) {
-              final scale = movable ? 1 + _pulseAnim.value * 0.08 : 1.0;
-              return Transform.scale(scale: scale, child: child);
-            },
-            child: SizedBox(
-              width: hitSize,
-              height: hitSize,
-              child: Center(
-                child: Container(
-                  width: size,
-                  height: size,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [color, color.withValues(alpha: 0.72)],
-                    ),
-                    border: Border.all(
-                      color: selected
-                          ? Colors.white
-                          : color.withValues(alpha: 0.16),
-                      width: selected ? 3 : 1.6,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: color.withValues(
-                          alpha: movable
-                              ? 0.42 + _pulseAnim.value * 0.12
-                              : 0.18,
-                        ),
-                        blurRadius: movable ? 22 : 10,
-                        spreadRadius: movable ? 2 : 0,
+
+      // 当多个可移动飞机在同一位置时，增加额外偏移让每架都可点击
+      final movableInGroup = group.where(
+        (e) => e.player == _currentPlayer && _movablePlanes.contains(e.plane),
+      ).toList();
+      Offset extraOffset = Offset.zero;
+      if (movableInGroup.length > 1) {
+        final movableIndex = movableInGroup.indexOf(entry);
+        final spread = geometry.tokenSize * 0.45;
+        if (movableInGroup.length == 2) {
+          extraOffset = Offset(movableIndex == 0 ? -spread : spread, 0);
+        } else if (movableInGroup.length == 3) {
+          const angles = [0.0, 2.094, 4.189]; // 0°, 120°, 240°
+          final a = angles[movableIndex];
+          extraOffset = Offset(cos(a) * spread, sin(a) * spread);
+        } else {
+          final a = movableIndex * (pi / 2);
+          extraOffset = Offset(cos(a) * spread, sin(a) * spread);
+        }
+      }
+
+      widgets.add(
+        Positioned(
+          left: entry.center.dx + offset.dx + extraOffset.dx - hitSize / 2,
+          top: entry.center.dy + offset.dy + extraOffset.dy - hitSize / 2,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _selectPlane(entry.plane),
+            child: AnimatedBuilder(
+              animation: _pulseAnim,
+              builder: (context, child) {
+                final scale = movable ? 1 + _pulseAnim.value * 0.08 : 1.0;
+                return Transform.scale(scale: scale, child: child);
+              },
+              child: SizedBox(
+                width: hitSize,
+                height: hitSize,
+                child: Center(
+                  child: Container(
+                    width: size,
+                    height: size,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [color, color.withValues(alpha: 0.72)],
                       ),
-                    ],
-                  ),
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Center(
-                        child: const Icon(
-                          Icons.flight_takeoff_rounded,
-                          color: Colors.white,
-                          size: 24,
-                        ),
+                      border: Border.all(
+                        color: selected
+                            ? Colors.white
+                            : color.withValues(alpha: 0.16),
+                        width: selected ? 3 : 1.6,
                       ),
-                      if (_hasShield[entry.player][entry.plane])
-                        const Positioned(
-                          right: -3,
-                          top: -5,
-                          child: _TokenBadge(
-                            icon: Icons.shield_rounded,
-                            color: Color(0xFF2C8EF4),
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withValues(
+                            alpha: movable
+                                ? 0.42 + _pulseAnim.value * 0.12
+                                : 0.18,
+                          ),
+                          blurRadius: movable ? 22 : 10,
+                          spreadRadius: movable ? 2 : 0,
+                        ),
+                      ],
+                    ),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        // 旋转飞机图标，机头对准飞行方向
+                        Center(
+                          child: Transform.rotate(
+                            angle: entry.angle,
+                            child: const Icon(
+                              Icons.flight_takeoff_rounded,
+                              color: Colors.white,
+                              size: 24,
+                            ),
                           ),
                         ),
-                      if (_hasBoost[entry.player][entry.plane])
-                        const Positioned(
-                          left: -3,
-                          top: -5,
-                          child: _TokenBadge(
-                            icon: Icons.bolt_rounded,
-                            color: Color(0xFFF59E0B),
+                        if (_hasShield[entry.player][entry.plane])
+                          const Positioned(
+                            right: -3,
+                            top: -5,
+                            child: _TokenBadge(
+                              icon: Icons.shield_rounded,
+                              color: Color(0xFF2C8EF4),
+                            ),
                           ),
-                        ),
-                      if (_isRepairing[entry.player][entry.plane])
-                        const Positioned(
-                          left: -4,
-                          bottom: -6,
-                          child: _TokenBadge(
-                            icon: Icons.build_circle_rounded,
-                            color: Color(0xFF8B5E3C),
+                        if (_hasBoost[entry.player][entry.plane])
+                          const Positioned(
+                            left: -3,
+                            top: -5,
+                            child: _TokenBadge(
+                              icon: Icons.bolt_rounded,
+                              color: Color(0xFFF59E0B),
+                            ),
                           ),
-                        ),
-                    ],
+                        if (_isRepairing[entry.player][entry.plane])
+                          const Positioned(
+                            left: -4,
+                            bottom: -6,
+                            child: _TokenBadge(
+                              icon: Icons.build_circle_rounded,
+                              color: Color(0xFF8B5E3C),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -1544,7 +1650,150 @@ class _FlyingChessScreenState extends State<FlyingChessScreen>
           ),
         ),
       );
-    }).toList();
+    }
+
+    // 传送特效
+    if (_teleportEffectFromPos != null && _teleportEffectToPos != null) {
+      // 显示在传送目标位置
+      final effectCenter = geometry.trackCenter(_teleportEffectToPos!);
+      widgets.add(
+        Positioned(
+          left: effectCenter.dx - 50,
+          top: effectCenter.dy - 50,
+          child: AnimatedBuilder(
+            animation: _teleportAnim,
+            builder: (context, _) {
+              final progress = _teleportAnim.value;
+              return Transform.scale(
+                scale: 0.3 + progress * 1.2,
+                child: Opacity(
+                  opacity: 1.0 - progress * 0.7,
+                  child: Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          Colors.white.withValues(alpha: 0.9),
+                          const Color(0xFFA855F7).withValues(alpha: 0.7),
+                          const Color(0xFF7C3AED).withValues(alpha: 0.4),
+                          Colors.transparent,
+                        ],
+                        stops: const [0.0, 0.3, 0.6, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+      // 同时在来源位置显示收缩特效
+      final fromCenter = geometry.trackCenter(_teleportEffectFromPos!);
+      widgets.add(
+        Positioned(
+          left: fromCenter.dx - 40,
+          top: fromCenter.dy - 40,
+          child: AnimatedBuilder(
+            animation: _teleportAnim,
+            builder: (context, _) {
+              final progress = _teleportAnim.value;
+              return Opacity(
+                opacity: (1.0 - progress) * 0.8,
+                child: Transform.scale(
+                  scale: 1.0 - progress * 0.7,
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          const Color(0xFFA855F7).withValues(alpha: 0.6),
+                          const Color(0xFF7C3AED).withValues(alpha: 0.3),
+                          Colors.transparent,
+                        ],
+                        stops: const [0.0, 0.5, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    }
+
+    // 返航特效
+    if (_returnEffectPos != null && _returnEffectPlayer != null) {
+      final effectCenter = geometry.trackCenter(_returnEffectPos!);
+      final color = playerColors[_returnEffectPlayer!];
+      widgets.add(
+        Positioned(
+          left: effectCenter.dx - 50,
+          top: effectCenter.dy - 50,
+          child: AnimatedBuilder(
+            animation: _returnAnim,
+            builder: (context, _) {
+              final progress = _returnAnim.value;
+              return SizedBox(
+                width: 100,
+                height: 100,
+                child: Stack(
+                  children: [
+                    // 主光环
+                    Opacity(
+                      opacity: 1.0 - progress,
+                      child: Transform.scale(
+                        scale: 0.5 + progress * 1.5,
+                        child: Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: RadialGradient(
+                              colors: [
+                                Colors.white.withValues(alpha: 0.8),
+                                color.withValues(alpha: 0.6),
+                                const Color(0xFFFF8800).withValues(alpha: 0.3),
+                                Colors.transparent,
+                              ],
+                              stops: const [0.0, 0.3, 0.6, 1.0],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // 碎裂粒子
+                    for (var i = 0; i < 6; i++)
+                      Positioned(
+                        left: 50 + cos(i * pi / 3 + progress * pi * 0.5) * progress * 40 - 5,
+                        top: 50 + sin(i * pi / 3 + progress * pi * 0.5) * progress * 40 - 5,
+                        child: Opacity(
+                          opacity: (1.0 - progress) * 0.8,
+                          child: Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.7),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    }
+
+    return widgets;
   }
 
   Offset _stackOffset(int index, int count, double distance) {
@@ -2193,12 +2442,14 @@ class _PlaneEntry {
     required this.plane,
     required this.center,
     required this.key,
+    required this.angle,
   });
 
   final int player;
   final int plane;
   final Offset center;
   final String key;
+  final double angle;
 }
 
 class _BoardPainter extends CustomPainter {

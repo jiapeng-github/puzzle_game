@@ -20,7 +20,7 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -38,11 +38,17 @@ class DatabaseHelper {
         games_played INTEGER DEFAULT 0,
         wins INTEGER DEFAULT 0,
         gobang_wins INTEGER DEFAULT 0,
+        gobang_score INTEGER DEFAULT 0,
         best_2048 INTEGER DEFAULT 0,
+        game2048_score INTEGER DEFAULT 0,
         best_match3 INTEGER DEFAULT 0,
+        match3_score INTEGER DEFAULT 0,
         best_flying INTEGER DEFAULT 0,
+        flying_score INTEGER DEFAULT 0,
         best_sudoku INTEGER DEFAULT 0,
-        best_memory INTEGER DEFAULT 0
+        sudoku_score INTEGER DEFAULT 0,
+        best_memory INTEGER DEFAULT 0,
+        memory_score INTEGER DEFAULT 0
       )
     ''');
 
@@ -72,10 +78,19 @@ class DatabaseHelper {
   /// 数据库升级
   Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      // 添加飞行棋、数独、翻牌最高分字段
+      // v1 -> v2: 添加飞行棋、数独、翻牌最高分字段
       await db.execute('ALTER TABLE players ADD COLUMN best_flying INTEGER DEFAULT 0');
       await db.execute('ALTER TABLE players ADD COLUMN best_sudoku INTEGER DEFAULT 0');
       await db.execute('ALTER TABLE players ADD COLUMN best_memory INTEGER DEFAULT 0');
+    }
+    if (oldVersion < 3) {
+      // v2 -> v3: 添加各游戏累计积分字段
+      await db.execute('ALTER TABLE players ADD COLUMN gobang_score INTEGER DEFAULT 0');
+      await db.execute('ALTER TABLE players ADD COLUMN game2048_score INTEGER DEFAULT 0');
+      await db.execute('ALTER TABLE players ADD COLUMN match3_score INTEGER DEFAULT 0');
+      await db.execute('ALTER TABLE players ADD COLUMN flying_score INTEGER DEFAULT 0');
+      await db.execute('ALTER TABLE players ADD COLUMN sudoku_score INTEGER DEFAULT 0');
+      await db.execute('ALTER TABLE players ADD COLUMN memory_score INTEGER DEFAULT 0');
     }
   }
 
@@ -91,11 +106,17 @@ class DatabaseHelper {
         'games_played': 0,
         'wins': 0,
         'gobang_wins': 0,
+        'gobang_score': 0,
         'best_2048': 0,
+        'game2048_score': 0,
         'best_match3': 0,
+        'match3_score': 0,
         'best_flying': 0,
+        'flying_score': 0,
         'best_sudoku': 0,
+        'sudoku_score': 0,
         'best_memory': 0,
+        'memory_score': 0,
       });
     }
     await batch.commit();

@@ -50,14 +50,27 @@ class _FullLeaderboardScreenState extends State<FullLeaderboardScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        color: const Color(0xFFF5F7FA),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF87CEEB), Color(0xFFFFE4E1)],
+          ),
+        ),
         child: SafeArea(
           child: Column(
             children: [
+              // 顶部栏：返回 + 标题 + 关闭
               _buildAppBar(),
+
               const SizedBox(height: 12),
+
+              // 标签栏 - 横向滚动
               _buildTabBar(),
+
               const SizedBox(height: 12),
+
+              // 排行榜内容
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
@@ -82,40 +95,72 @@ class _FullLeaderboardScreenState extends State<FullLeaderboardScreen>
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Colors.white.withValues(alpha: 0.9),
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 8,
                   ),
                 ],
               ),
-              child: const Icon(Icons.arrow_back, color: Color(0xFF2D3436), size: 22),
+              child: const Icon(Icons.arrow_back, color: Color(0xFF2D3436), size: 24),
             ),
           ),
-          // 标题 - 居中
-          const Expanded(
-            child: Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('🏆', style: TextStyle(fontSize: 20)),
-                  SizedBox(width: 6),
-                  Text(
-                    '排行榜',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF2D3436),
-                    ),
+
+          const Spacer(),
+
+          // 标题
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.95),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('🏆', style: TextStyle(fontSize: 24)),
+                SizedBox(width: 8),
+                Text(
+                  '排行榜',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2D3436),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const Spacer(),
+
+          // 关闭按钮
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.9),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 8,
                   ),
                 ],
               ),
+              child: const Icon(Icons.close, color: Color(0xFF2D3436), size: 24),
             ),
           ),
-          // 占位，保持标题居中
-          const SizedBox(width: 42),
         ],
       ),
     );
@@ -123,7 +168,7 @@ class _FullLeaderboardScreenState extends State<FullLeaderboardScreen>
 
   Widget _buildTabBar() {
     return Container(
-      height: 44,
+      height: 56,
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
@@ -139,30 +184,35 @@ class _FullLeaderboardScreenState extends State<FullLeaderboardScreen>
                 _tabController.animateTo(index);
               });
             },
-            child: Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.only(right: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFF4A90D9) : Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                color: isSelected
+                    ? const Color(0xFFFFD700)
+                    : Colors.white.withValues(alpha: 0.9),
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
+                    color: isSelected
+                        ? const Color(0xFFFFD700).withValues(alpha: 0.3)
+                        : Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
                   ),
                 ],
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(tab.icon, style: const TextStyle(fontSize: 16)),
-                  const SizedBox(width: 4),
+                  Text(tab.icon, style: const TextStyle(fontSize: 18)),
+                  const SizedBox(width: 6),
                   Text(
                     tab.label,
                     style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
                       color: isSelected ? Colors.white : const Color(0xFF666666),
                     ),
                   ),
@@ -181,59 +231,47 @@ class _FullLeaderboardScreenState extends State<FullLeaderboardScreen>
         return _buildLeaderboardList(
           future: context.read<GameProvider>().getTotalLeaderboard(),
           getScore: (p) => p.totalScore,
-          subtitleBuilder: (p) => '共 ${p.gamesPlayed} 场',
         );
       case 'weekly':
         return _buildLeaderboardList(
           future: context.read<GameProvider>().getWeeklyLeaderboard(),
           getScore: (p) => p.weeklyScore,
-          subtitleBuilder: (p) => '本周 ${p.gamesPlayed} 场',
         );
       case GameType.gobang:
         return _buildLeaderboardList(
-          future: context.read<GameProvider>().getTotalLeaderboard(),
-          getScore: (p) => p.totalScore,
-          subtitleBuilder: (p) => p.gobangWins > 0 ? '五子棋 ${p.gobangWins} 胜' : null,
+          future: context.read<GameProvider>().getGobangLeaderboard(),
+          getScore: (p) => p.gobangScore,
+          suffix: '分',
         );
       case GameType.game2048:
         return _buildLeaderboardList(
-          future: context.read<GameProvider>().getTotalLeaderboard(),
-          getScore: (p) => p.totalScore,
-          subtitleBuilder: (p) => p.best2048 > 0 ? '最高 ${p.best2048} 分' : null,
+          future: context.read<GameProvider>().get2048Leaderboard(),
+          getScore: (p) => p.game2048Score,
+          suffix: '分',
         );
       case GameType.match3:
         return _buildLeaderboardList(
-          future: context.read<GameProvider>().getTotalLeaderboard(),
-          getScore: (p) => p.totalScore,
-          subtitleBuilder: (p) => p.bestMatch3 > 0 ? '最高 ${p.bestMatch3} 分' : null,
+          future: context.read<GameProvider>().getMatch3Leaderboard(),
+          getScore: (p) => p.match3Score,
+          suffix: '分',
         );
       case GameType.flyingChess:
         return _buildLeaderboardList(
-          future: context.read<GameProvider>().getTotalLeaderboard(),
-          getScore: (p) => p.totalScore,
-          subtitleBuilder: (p) => p.bestFlying > 0 ? '最高 ${p.bestFlying} 分' : null,
+          future: context.read<GameProvider>().getFlyingChessLeaderboard(),
+          getScore: (p) => p.flyingScore,
+          suffix: '分',
         );
       case GameType.sudoku:
         return _buildLeaderboardList(
-          future: context.read<GameProvider>().getTotalLeaderboard(),
-          getScore: (p) => p.totalScore,
-          subtitleBuilder: (p) {
-            if (p.bestSudoku <= 0) return null;
-            final m = p.bestSudoku ~/ 60;
-            final s = p.bestSudoku % 60;
-            return '最快 ${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
-          },
+          future: context.read<GameProvider>().getSudokuLeaderboard(),
+          getScore: (p) => p.sudokuScore,
+          suffix: '分',
         );
       case GameType.memory:
         return _buildLeaderboardList(
-          future: context.read<GameProvider>().getTotalLeaderboard(),
-          getScore: (p) => p.totalScore,
-          subtitleBuilder: (p) {
-            if (p.bestMemory <= 0) return null;
-            final m = p.bestMemory ~/ 60;
-            final s = p.bestMemory % 60;
-            return '最快 ${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
-          },
+          future: context.read<GameProvider>().getMemoryLeaderboard(),
+          getScore: (p) => p.memoryScore,
+          suffix: '分',
         );
       default:
         return _buildLeaderboardList(
@@ -246,7 +284,7 @@ class _FullLeaderboardScreenState extends State<FullLeaderboardScreen>
   Widget _buildLeaderboardList({
     required Future<List<Player>> future,
     required int Function(Player) getScore,
-    String? Function(Player)? subtitleBuilder,
+    String suffix = '',
   }) {
     return FutureBuilder<List<Player>>(
       future: future,
@@ -277,7 +315,7 @@ class _FullLeaderboardScreenState extends State<FullLeaderboardScreen>
               player: player,
               score: score,
               isCurrent: isCurrent,
-              subtitle: subtitleBuilder?.call(player),
+              suffix: suffix,
             );
           },
         );
@@ -307,68 +345,114 @@ class _FullLeaderboardScreenState extends State<FullLeaderboardScreen>
     required Player player,
     required int score,
     required bool isCurrent,
-    String? subtitle,
+    String suffix = '',
   }) {
     final isTop3 = rank < 3;
     final medalEmojis = ['🥇', '🥈', '🥉'];
     final rankColors = [
-      const Color(0xFFFFB800),
-      const Color(0xFF9CA3AF),
-      const Color(0xFFCD7F32),
+      const Color(0xFFFFD700), // 金色
+      const Color(0xFFC0C0C0), // 银色
+      const Color(0xFFCD7F32), // 铜色
     ];
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: isCurrent ? const Color(0xFFFFF8E1) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: isCurrent
-            ? Border.all(color: const Color(0xFF4A90D9), width: 2)
-            : null,
+        // 前3名彩色背景，4-6名白色背景
+        color: isTop3
+            ? rankColors[rank].withValues(alpha: 0.15)
+            : isCurrent
+                ? const Color(0xFFFFF9E6) // 当前角色淡黄高亮
+                : Colors.white.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isTop3
+              ? rankColors[rank].withValues(alpha: 0.5)
+              : isCurrent
+                  ? const Color(0xFFFFD700)
+                  : Colors.white.withValues(alpha: 0.5),
+          width: isTop3 || isCurrent ? 3 : 2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Row(
         children: [
+          // 排名 - 前3名显示奖牌，4-6名显示数字
           Container(
-            width: 36,
-            height: 36,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              color: isTop3 ? rankColors[rank].withValues(alpha: 0.15) : Colors.grey[100],
+              color: isTop3 ? rankColors[rank] : Colors.grey[200],
               shape: BoxShape.circle,
+              boxShadow: isTop3
+                  ? [
+                      BoxShadow(
+                        color: rankColors[rank].withValues(alpha: 0.4),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ]
+                  : null,
             ),
             child: Center(
               child: isTop3
-                  ? Text(medalEmojis[rank], style: const TextStyle(fontSize: 20))
+                  ? Text(
+                      medalEmojis[rank],
+                      style: const TextStyle(fontSize: 24),
+                    )
                   : Text(
                       '${rank + 1}',
                       style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[500],
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[600],
                       ),
                     ),
             ),
           ),
-          const SizedBox(width: 12),
+
+          const SizedBox(width: 14),
+
+          // 48px头像
           Container(
-            width: 42,
-            height: 42,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
-              color: Colors.grey[100],
+              gradient: LinearGradient(
+                colors: [
+                  (isTop3 ? rankColors[rank] : const Color(0xFF87CEEB))
+                      .withValues(alpha: 0.3),
+                  (isTop3 ? rankColors[rank] : const Color(0xFF87CEEB))
+                      .withValues(alpha: 0.1),
+                ],
+              ),
               shape: BoxShape.circle,
+              border: Border.all(
+                color: isCurrent
+                    ? const Color(0xFFFFD700)
+                    : (isTop3 ? rankColors[rank] : Colors.grey[300])!,
+                width: isCurrent ? 3 : 2,
+              ),
             ),
             child: Center(
-              child: Text(player.emoji, style: const TextStyle(fontSize: 24)),
+              child: Text(
+                player.emoji,
+                style: const TextStyle(fontSize: 28),
+              ),
             ),
           ),
-          const SizedBox(width: 12),
+
+          const SizedBox(width: 14),
+
+          // 角色名 + 标签
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -378,24 +462,24 @@ class _FullLeaderboardScreenState extends State<FullLeaderboardScreen>
                     Text(
                       player.name,
                       style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                         color: Color(0xFF2D3436),
                       ),
                     ),
                     if (isCurrent) ...[
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF4A90D9),
-                          borderRadius: BorderRadius.circular(6),
+                          color: const Color(0xFFFFD700),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         child: const Text(
                           '当前',
                           style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
                         ),
@@ -403,30 +487,34 @@ class _FullLeaderboardScreenState extends State<FullLeaderboardScreen>
                     ],
                   ],
                 ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF9CA3AF),
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
+
+          // 积分数字（只显示数字，无百分比）
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: isTop3 ? rankColors[rank] : const Color(0xFF4A90D9),
-              borderRadius: BorderRadius.circular(8),
+              gradient: LinearGradient(
+                colors: isTop3
+                    ? [rankColors[rank], rankColors[rank].withValues(alpha: 0.8)]
+                    : [const Color(0xFF87CEEB), const Color(0xFF64B5F6)],
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: (isTop3 ? rankColors[rank] : const Color(0xFF87CEEB))
+                      .withValues(alpha: 0.3),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Text(
-              '$score',
+              '$score$suffix',
               style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
             ),
