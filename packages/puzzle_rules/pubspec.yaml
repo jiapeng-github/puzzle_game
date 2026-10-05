@@ -1,0 +1,6 @@
+name: puzzle_rules
+description: Deterministic offline rules for the six family games.
+version: 2.0.0
+publish_to: none
+environment:
+  sdk: '>=3.11.0 <4.0.0'

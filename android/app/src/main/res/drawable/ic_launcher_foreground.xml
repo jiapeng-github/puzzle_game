@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive layers are 108dp; inset the source to 72dp, keeping the
+     illustrated silhouette inside the central 66dp safe region. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:inset="16.666667%">
+    <bitmap android:src="@drawable/island_logo_foreground"
+        android:gravity="fill" android:filter="true" />
+</inset>

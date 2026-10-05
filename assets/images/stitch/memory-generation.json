@@ -1,0 +1,13 @@
+{
+  "tool": "built-in image_gen",
+  "assets": [
+    {
+      "file": "traffic.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE production sprite atlas for a children's memory matching game. True transparent background. Exact regular 4 columns by 3 rows grid of equal square cells, overall 1536x1152. Exactly twelve isolated centered cartoon vehicles, one per cell occupying central 75%, generous transparent margins, no overlaps. Reading order: row 1 red compact car, sky-blue airplane, teal tugboat, green steam locomotive; row 2 yellow bicycle, orange school bus, purple rocket, blue delivery truck; row 3 coral scooter, white sailboat with yellow sail, mint street tram, silver subway train front view. Distinct playful rounded silhouettes, chunky wheels, expressive friendly windshield eyes on motor vehicles where appropriate, lively three-quarter views, polished colorful children's book/game sticker illustration. Thick smooth dark navy outlines, soft cel shading, glossy highlights, coral sky blue mint sunshine lavender palette. Recognizable complete vehicles, consistent scale, readable at 64 pixels. No text, labels, logos, borders, cards, grid lines, scenery, watermark or background shadows. Strict equal 4x3 cell alignment."
+    },
+    {
+      "file": "sports.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE production sprite atlas for a children's memory matching game. True transparent background. Exact regular 4 columns by 3 rows grid of equal square cells, overall 1536x1152. Exactly twelve isolated centered cartoon sports illustrations, one per cell occupying central 75%, generous transparent margins, no overlaps. Reading order: row 1 black-white soccer ball, orange basketball, mint tennis racket with yellow ball, tan baseball glove with white baseball; row 2 blue-yellow volleyball, purple golf club with ball on green tee, blue ice hockey stick with black puck, coral swimming goggles with blue swim cap; row 3 brown American football with white stitches, yellow cricket bat with red ball, purple-orange racing helmet, mint gymnastics ribbon wand with curled coral ribbon. Cute lively rounded forms and dynamic diagonals, polished colorful children's book/game sticker illustration. Thick smooth dark navy outlines, soft cel shading, bright glossy highlights, coral sky blue mint sunshine lavender palette. Distinct silhouettes and color combinations, all objects complete, consistent scale, readable at 64 pixels. No people, text, labels, logos, borders, cards, grid lines, scenery, watermark or background shadows. Strict equal 4x3 cell alignment."
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="益智小游戏"
+        android:appCategory="game"
+        android:label="趣玩小岛"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

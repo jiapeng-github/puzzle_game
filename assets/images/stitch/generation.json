@@ -1,0 +1,17 @@
+{
+  "tool": "built-in image_gen",
+  "assets": [
+    {
+      "file": "family.png",
+      "prompt": "Use case: stylized-concept. Asset type: one transparent sprite atlas for six family avatar portraits in a Chinese playful board game. A precise 3 columns by 2 rows regular atlas, six equal 512px square cells, total 1536x1024. Each subject centered within its own cell, with generous transparent padding and no overlap. Top row: cheerful young boy with short dark hair blue shirt; cheerful young girl dark pigtails coral shirt; kind adult father short dark hair round glasses blue shirt. Bottom row: kind adult mother dark bob haircut mint shirt; smiling elderly grandfather gray hair round glasses yellow shirt; smiling elderly grandmother gray bun lavender shirt. Head-and-shoulders busts, consistent proportions and lighting, expressive friendly faces, warm peach skin, polished flat cartoon illustration with gentle cel shading, thick dark navy #24334B outline, cream highlights, palette coral #FF7355 sky #59BDF7 mint #65CDAA sunshine #FFD45B lavender #B49BFA. Friendly clean casual-game illustration, not photorealistic, not 3D, no circles behind heads, no card backgrounds, no lettering, no captions, no watermark. Actual transparent background. This is one production sprite atlas and must keep strict regular cell placement."
+    },
+    {
+      "file": "animals.png",
+      "prompt": "Use case: stylized-concept. Asset type: one production matching-game animal sprite atlas, transparent background, precise 4 columns x 3 rows equal square cells, 1536x1152 total. Each cell contains ONE isolated centered friendly cartoon animal head, fits inside middle 75% of cell with generous transparent margins. Row 1 fox, orange cat, white rabbit, brown bear. Row 2 panda, yellow lion, green frog, purple owl. Row 3 blue elephant, pink pig, cream dog, yellow chick. Flat polished casual-game sticker illustration, bold smooth dark navy #24334B contour, warm gentle cel shading, bright clean coral orange sunshine yellow mint teal sky blue lavender, same style and scale across all 12 heads. Cute expressive faces, distinguishable silhouettes and ears, front facing, no body, no text, no numerals, no labels, no border/card/circle, no watermark, no cast background shadow. True transparent alpha. Maintain regular 4 by 3 atlas alignment."
+    },
+    {
+      "file": "fruits.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE transparent regular sprite atlas for a polished cartoon fruit matching puzzle, 4 columns by 3 rows of equal square cells, total 1536x1152. Exactly one isolated fruit centered in each cell, within central 70% of cell, generous transparent spacing. Row 1: red strawberry, orange citrus fruit with green leaf, golden yellow lemon, purple grape bunch. Row 2: pink peach with leaf, green kiwi half showing seeds, shiny red apple, yellow banana bunch. Row 3: green pear, red watermelon wedge, pair of cherries, small yellow pineapple. Smooth flat cartoon game art with dark navy outline, bright saturated fruit colors, restrained cel shading and cute glossy highlights. Natural fruit silhouettes, legible at tiny sizes. No faces, no cards, no colored background tiles, no text, no watermarks, no shadow outside fruit, true transparent background. Strict uniform 4x3 atlas grid alignment."
+    }
+  ]
+}

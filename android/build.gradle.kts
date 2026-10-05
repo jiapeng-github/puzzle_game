@@ -1,5 +1,11 @@
 allprojects {
     repositories {
+        // Keep IDE and terminal builds on the same Flutter engine mirror.
+        // Limit this repository to engine artifacts; Android libraries use below.
+        maven {
+            url = uri("https://storage.flutter-io.cn/download.flutter.io")
+            content { includeGroup("io.flutter") }
+        }
 // 添加阿里云镜像加速下载
         maven { url = uri("https://maven.aliyun.com/repository/google") }
         maven { url = uri("https://maven.aliyun.com/repository/public") }

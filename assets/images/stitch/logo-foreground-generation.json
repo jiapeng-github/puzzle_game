@@ -1,0 +1,6 @@
+{
+  "tool": "built-in image_gen",
+  "source": "logo.png",
+  "file": "logo-foreground.png",
+  "prompt": "Use case: background-extraction. Edit this exact logo into an Android adaptive-icon foreground layer. Remove only the blue background to true transparent alpha. Preserve the complete smiling puzzle island, house, palm tree, colors, navy outlines, proportions and existing centered position and scale. Preserve square canvas and generous empty margins. Do not redesign, add shadows, text, circular plates or a border. Every blue sky pixel outside the logo must become transparent; keep the blue window inside the house."
+}
